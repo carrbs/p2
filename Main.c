@@ -2,7 +2,7 @@ code Main
 
   -- OS Class: Project 2
   --
-  -- <PUT YOUR NAME HERE>
+  -- <OSCAR SANABRIA>
   --
   -- This package contains the following:
   --     SimpleThreadExample
@@ -22,9 +22,9 @@ code Main
 
       -----  Uncomment any one of the following to perform the desired test  -----
 
-      SimpleThreadExample ()
+      -- SimpleThreadExample ()
       -- MoreThreadExamples ()
-      -- TestMutex ()
+       TestMutex ()
       -- ProducerConsumer ()
       -- DiningPhilosophers ()
 
@@ -303,6 +303,7 @@ code Main
   --
   const
     BUFFER_SIZE = 5
+	ZERO = 0
 
   var
     buffer: array [BUFFER_SIZE] of char = new array of char {BUFFER_SIZE of '?'}
@@ -310,8 +311,14 @@ code Main
     bufferNextIn: int = 0
     bufferNextOut: int = 0
     thArray: array [8] of Thread = new array of Thread { 8 of new Thread }
+    myLock2: Mutex = new Mutex 
+    fullCount: Semaphore = new Semaphore
+    emptyCount: Semaphore = new Semaphore
 
   function ProducerConsumer ()
+    emptyCount.Init(5)
+	fullCount.Init(0)
+    myLock2.Init ()
 
       print ("     ")
 
@@ -346,9 +353,11 @@ code Main
       var
         i: int
         c: char = intToChar ('A' + myId - 1)
+
       for i = 1 to 5
         -- Perform synchroniztion...
-
+		emptyCount.Down()
+		myLock2.Lock()
         -- Add c to the buffer
         buffer [bufferNextIn] = c
         bufferNextIn = (bufferNextIn + 1) % BUFFER_SIZE
@@ -358,6 +367,9 @@ code Main
         PrintBuffer (c)
 
         -- Perform synchronization...
+        myLock2.Unlock()
+        fullCount.Up()
+
 
       endFor
     endFunction
@@ -367,7 +379,8 @@ code Main
         c: char
       while true
         -- Perform synchroniztion...
-
+        fullCount.Down()
+        myLock2.Lock()
         -- Remove next character from the buffer
         c = buffer [bufferNextOut]
         bufferNextOut = (bufferNextOut + 1) % BUFFER_SIZE
@@ -377,6 +390,8 @@ code Main
         PrintBuffer (c)
 
         -- Perform synchronization...
+        myLock2.Unlock()
+        emptyCount.Up()
 
       endWhile
     endFunction
@@ -453,6 +468,7 @@ code Main
     mon: ForkMonitor
     philospher: array [5] of Thread = new array of Thread {5 of new Thread }
 
+
   function DiningPhilosophers ()
 
       print ("Plato\n")
@@ -464,7 +480,7 @@ code Main
       mon = new ForkMonitor
       mon.Init ()
       mon.PrintAllStatus ()
-
+      
       philospher[0].Init ("Plato")
       philospher[0].Fork (PhilosphizeAndEat, 0)
 
@@ -496,33 +512,68 @@ code Main
       endFor
     endFunction
 
+
   class ForkMonitor
     superclass Object
     fields
-      status: array [5] of int             -- For each philosopher: HUNGRY, EATING, or THINKING
+      mySelf: array[5] of Condition
+      myLock3: Mutex 
+      status: array [5] of int  -- For each philosopher: HUNGRY, EATING, or THINKING
     methods
       Init ()
       PickupForks (p: int)
       PutDownForks (p: int)
       PrintAllStatus ()
+      test (p: int)
+
   endClass
 
   behavior ForkMonitor
 
     method Init ()
-      -- Initialize so that all philosophers are THINKING.
-      -- ...unimplemented...
-      endMethod
+    -- Initialize so that all philosophers are THINKING.
+      var i: int
+      status = new array of int {5 of THINKING}
+      myLock3 = new Mutex
+      myLock3.Init()
+      mySelf = new array[5] of Condition{5 of new Condition}
+      
+      for i = 0 to 4
+        mySelf[i].Init()
+      endFor
+    endMethod
 
     method PickupForks (p: int)
       -- This method is called when philosopher 'p' is wants to eat.
-      -- ...unimplemented...
-      endMethod
+      myLock3.Lock()
+      status[p] = HUNGRY
+      mon.PrintAllStatus ()
+      self.test (p)
+      if status[p] != EATING
+        mySelf[p].Wait(&myLock3)
+      endIf
+      myLock3.Unlock()
+    endMethod
 
     method PutDownForks (p: int)
-      -- This method is called when the philosopher 'p' is done eating.
-      -- ...unimplemented...
-      endMethod
+    -- This method is called when the philosopher 'p' is done eating.
+      myLock3.Lock()
+      status[p] = THINKING
+      mon.PrintAllStatus ()
+      self.test ((p + 4) % 5)
+      self.test ((p + 1) % 5)
+      myLock3.Unlock()
+    endMethod
+
+    method test (p: int)
+      if status[(p + 4) % 5] != EATING &&
+         status[p] == HUNGRY &&
+         status[(p + 1) % 5] != EATING
+           status[p] = EATING
+	      mon.PrintAllStatus ()
+           mySelf[p].Signal(&myLock3)    
+      endIf
+    endMethod
 
     method PrintAllStatus ()
       -- Print a single line showing the status of all philosophers.

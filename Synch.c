@@ -2,7 +2,7 @@ code Synch
 
   -- OS Class: Project 2
   --
-  -- <PUT YOUR NAME HERE>
+  -- <OSCAR SANABRIA>
 
 -----------------------------  Semaphore  ---------------------------------
 
@@ -95,26 +95,96 @@ code Synch
       ----------  Mutex . Init  ----------
 
       method Init ()
-          FatalError ("Unimplemented method")
+          heldBy = null
+          waitingThreads = new List [Thread]
         endMethod
 
-      ----------  Mutex . Lock  ----------
+  /*    ----------  Mutex . Lock  ----------
 
       method Lock ()
-          FatalError ("Unimplemented method")
+          var
+            oldIntStat: int
+          oldIntStat = SetInterruptsTo (DISABLED)
+          if heldBy == currentThread
+            FatalError("current thread trying to lock again")
+          endIf
+
+            readyList.AddToEnd (currentThread)
+            currentThread.Sleep()
+          heldBy = currentThread
+          oldIntStat = SetInterruptsTo (oldIntStat)
         endMethod
 
       ----------  Mutex . Unlock  ----------
+      -- do you explicitly give the next thread in the waiting list 
+      -- the lock in your mutex code?
+      method Unlock ()
+        var
+          t: ptr to Thread
+          oldIntStat: int
+          oldIntStat = SetInterruptsTo (DISABLED)
+        if ! heldBy 
+          FatalError ("Trying to unlock an unlocked Mutex")
+        endIf
+        heldBy = null
+        if ! waitingThreads.IsEmpty()
+          readyList.AddToEnd (currentThread)
+          t = waitingThreads.Remove ()
+          t.status = READY
+          readyList.AddToEnd (t)        
+        endIf 
+        oldIntStat = SetInterruptsTo (oldIntStat)
+      endMethod
+*/
+      -----------  Mutex . Lock  -----------
+
+      method Lock ()
+          var
+            oldIntStat: int
+          if heldBy == currentThread
+            FatalError ("current thread has already locked!")
+          endIf
+          oldIntStat = SetInterruptsTo (DISABLED)
+
+          if !heldBy
+            heldBy = currentThread
+          else
+            waitingThreads.AddToEnd (currentThread)
+            currentThread.Sleep ()
+          endIf
+          oldIntStat = SetInterruptsTo (oldIntStat)
+        endMethod
+
+      -----------  Mutex . Unlock  -----------
 
       method Unlock ()
-          FatalError ("Unimplemented method")
+          var
+            oldIntStat: int
+            t: ptr to Thread
+          if heldBy != currentThread
+            FatalError ("current thread does not hold lock!")
+          endIf
+          oldIntStat = SetInterruptsTo (DISABLED)
+          t = waitingThreads.Remove ()
+          if t
+            t.status = READY
+            readyList.AddToEnd (t)
+            heldBy = t
+          else
+            heldBy = null
+          endIf
+          oldIntStat = SetInterruptsTo (oldIntStat)
         endMethod
 
       ----------  Mutex . IsHeldByCurrentThread  ----------
 
       method IsHeldByCurrentThread () returns bool
-          FatalError ("Unimplemented method")
-          return false
+        if heldBy == currentThread -- current thread has the mutex
+          -- print("mutex is held by the current thread\n")
+          return true
+        endIf
+        
+        return false
         endMethod
 
   endBehavior
