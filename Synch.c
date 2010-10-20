@@ -108,7 +108,7 @@ code Synch
           -- if heldBy == currentThread then something
           -- got totally screwed up, exit.
           if heldBy == currentThread
-            FatalError ("current thread has already locked!")
+            FatalError("current thread has already locked!")
           endIf
 
           -- First step is to disable timer interrupts and
@@ -137,7 +137,7 @@ code Synch
           -- if heldBy != currentThread then something
           -- got totally screwed up, exit.
           if heldBy != currentThread
-            FatalError ("current thread does not hold lock!")
+            FatalError("current thread does not hold lock!")
           endIf
 
           -- Disable timer interrupts and
@@ -147,14 +147,14 @@ code Synch
           -- get the next thread from the waiting list
           t = waitingThreads.Remove () 
 
-          
+          -- if there's a thread in the waiting queue, add thread 
+          -- to ready list and update heldBy
           if t 
-          -- add thread to the ready list and update heldBy
             t.status = READY
             readyList.AddToEnd (t)
             heldBy = t
+          -- otherwise list is empty, set heldBy to null
           else 
-          -- list is empty, set heldBy to null
             heldBy = null
           endIf
           oldIntStat = SetInterruptsTo (oldIntStat)
@@ -169,7 +169,7 @@ code Synch
         endIf
         
         return false
-        endMethod
+      endMethod
 
   endBehavior
 
