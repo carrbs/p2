@@ -304,20 +304,25 @@ code Main
   const
     BUFFER_SIZE = 5
 	ZERO = 0
-
   var
     buffer: array [BUFFER_SIZE] of char = new array of char {BUFFER_SIZE of '?'}
     bufferSize: int = 0
     bufferNextIn: int = 0
     bufferNextOut: int = 0
     thArray: array [8] of Thread = new array of Thread { 8 of new Thread }
+    
+    -- myLock2, fullCount and emptyCount are required by the Producer
+    -- and Consumer functions.
     myLock2: Mutex = new Mutex 
     fullCount: Semaphore = new Semaphore
     emptyCount: Semaphore = new Semaphore
 
   function ProducerConsumer ()
+  -- Initializing the Mutex and Semaphores. emptyCount is 
+  -- initialized to 5 and fullCount to 0 and the Producer/Consumer
+  -- functions will update the values.
     emptyCount.Init(5)
-	fullCount.Init(0)
+	  fullCount.Init(0)
     myLock2.Init ()
 
       print ("     ")
@@ -349,6 +354,12 @@ code Main
       ThreadFinish ()
     endFunction
 
+
+  -- I pretty much followed the example verbatim from the 
+  -- textbook for these two functions, which basically was
+  -- just adding the Up()/Down() of the Semaphores and the 
+  -- Lock/Unlock() of my Mutex Lock in the appropriate places.
+  
   function Producer (myId: int)
       var
         i: int
@@ -356,8 +367,8 @@ code Main
 
       for i = 1 to 5
         -- Perform synchroniztion...
-		emptyCount.Down()
-		myLock2.Lock()
+	    	emptyCount.Down()
+		    myLock2.Lock()
         -- Add c to the buffer
         buffer [bufferNextIn] = c
         bufferNextIn = (bufferNextIn + 1) % BUFFER_SIZE
@@ -512,7 +523,10 @@ code Main
       endFor
     endFunction
 
-
+  -- Again I pretty much followed what the book said to do for the
+  -- Dining Philosophers, have to lock/unlock Mutex upon entry and 
+  -- exit of PickupForks and PutDownForks. Also added the PrintAllStatus()
+  -- call to make the output of the main function print properly.
   class ForkMonitor
     superclass Object
     fields
@@ -532,13 +546,13 @@ code Main
 
     method Init ()
     -- Initialize so that all philosophers are THINKING.
-      var i: int
+      var i: int -- variable for initializing mySelf
       status = new array of int {5 of THINKING}
-      myLock3 = new Mutex
+      myLock3 = new Mutex -- Mutex for mySelf
       myLock3.Init()
       mySelf = new array[5] of Condition{5 of new Condition}
       
-      for i = 0 to 4
+      for i = 0 to 4 -- using a for loop to initialize the condition array
         mySelf[i].Init()
       endFor
     endMethod

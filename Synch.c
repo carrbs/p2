@@ -99,53 +99,25 @@ code Synch
           waitingThreads = new List [Thread]
         endMethod
 
-  /*    ----------  Mutex . Lock  ----------
-
-      method Lock ()
-          var
-            oldIntStat: int
-          oldIntStat = SetInterruptsTo (DISABLED)
-          if heldBy == currentThread
-            FatalError("current thread trying to lock again")
-          endIf
-
-            readyList.AddToEnd (currentThread)
-            currentThread.Sleep()
-          heldBy = currentThread
-          oldIntStat = SetInterruptsTo (oldIntStat)
-        endMethod
-
-      ----------  Mutex . Unlock  ----------
-      -- do you explicitly give the next thread in the waiting list 
-      -- the lock in your mutex code?
-      method Unlock ()
-        var
-          t: ptr to Thread
-          oldIntStat: int
-          oldIntStat = SetInterruptsTo (DISABLED)
-        if ! heldBy 
-          FatalError ("Trying to unlock an unlocked Mutex")
-        endIf
-        heldBy = null
-        if ! waitingThreads.IsEmpty()
-          readyList.AddToEnd (currentThread)
-          t = waitingThreads.Remove ()
-          t.status = READY
-          readyList.AddToEnd (t)        
-        endIf 
-        oldIntStat = SetInterruptsTo (oldIntStat)
-      endMethod
-*/
       -----------  Mutex . Lock  -----------
 
       method Lock ()
           var
             oldIntStat: int
+
+          -- if heldBy == currentThread then something
+          -- got totally screwed up, exit.
           if heldBy == currentThread
             FatalError ("current thread has already locked!")
           endIf
+
+          -- First step is to disable timer interrupts and
+          -- store the previous status for when we exit Lock() method
           oldIntStat = SetInterruptsTo (DISABLED)
 
+          -- set heldBy to currentThread if it's null
+          -- otherwise it's held by another thread and
+          -- we add ourselves to the waiting queue and sleep
           if !heldBy
             heldBy = currentThread
           else
@@ -161,16 +133,28 @@ code Synch
           var
             oldIntStat: int
             t: ptr to Thread
+
+          -- if heldBy != currentThread then something
+          -- got totally screwed up, exit.
           if heldBy != currentThread
             FatalError ("current thread does not hold lock!")
           endIf
+
+          -- Disable timer interrupts and
+          -- store the previous status for when we exit Unlock()
           oldIntStat = SetInterruptsTo (DISABLED)
-          t = waitingThreads.Remove ()
-          if t
+          
+          -- get the next thread from the waiting list
+          t = waitingThreads.Remove () 
+
+          
+          if t 
+          -- add thread to the ready list and update heldBy
             t.status = READY
             readyList.AddToEnd (t)
             heldBy = t
-          else
+          else 
+          -- list is empty, set heldBy to null
             heldBy = null
           endIf
           oldIntStat = SetInterruptsTo (oldIntStat)
